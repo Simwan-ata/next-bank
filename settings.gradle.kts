@@ -14,4 +14,4 @@ dependencyResolutionManagement {
 }
 
 rootProject.name = "BankSmsManager"
-include(":app")
+include(":App")
