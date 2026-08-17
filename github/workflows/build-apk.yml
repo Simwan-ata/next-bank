@@ -46,7 +46,7 @@ jobs:
       - name: List APK output
         run: |
           echo "=== APK files ==="
-          find app/build/outputs -name "*.apk" -type f
+          find App/build/outputs -name "*.apk" -type f
           ls -lah App/build/outputs/apk/debug/ || true
 
       - name: Upload APK Artifact
