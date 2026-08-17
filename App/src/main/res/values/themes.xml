@@ -1,0 +1,11 @@
+<?xml version="1.0" encoding="utf-8"?>
+<resources>
+    <style name="Theme.BankSmsManager" parent="Theme.MaterialComponents.DayNight.NoActionBar">
+        <item name="colorPrimary">#16302E</item>
+        <item name="colorPrimaryVariant">#0D211F</item>
+        <item name="colorOnPrimary">#FBF9F2</item>
+        <item name="android:statusBarColor">#0D211F</item>
+        <item name="android:navigationBarColor">#0D211F</item>
+        <item name="android:windowBackground">#F2F0E6</item>
+    </style>
+</resources>
