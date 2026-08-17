@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="fa" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>مدیریت مالی - نسخه ۱</title>
+<link href="https://cdnjs.cloudflare.com/ajax/libs/vazirmatn/33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<style>
+  :root{
+    --ink:#16302E;
+    --ink-2:#1F433F;
+    --paper:#F2F0E6;
+    --paper-card:#FFFFFF;
+    --line:#E4E1D4;
+    --gold:#C9A227;
+    --gold-soft:#F3E9C7;
+    --turquoise:#2E8B8B;
+    --turquoise-soft:#DCEDEC;
+    --text-1:#16302E;
+    --text-2:#5B6B67;
+    --text-3:#8B978F;
+    --danger:#A23B3B;
+    --income:#1F7A6B;
+    --radius-lg:20px;
+    --radius-md:14px;
+    --radius-sm:10px;
+  }
+  *{box-sizing:border-box; margin:0; padding:0;}
+  body{
+    background:#DAD6C6;
+    display:flex;
+    justify-content:center;
+    padding:32px 12px;
+    font-family:'Vazirmatn', sans-serif;
+  }
+  .device{
+    width:390px;
+    height:844px;
+    background:var(--paper);
+    border-radius:44px;
+    overflow:hidden;
+    box-shadow:0 30px 60px rgba(22,48,46,0.35);
+    position:relative;
+    border:8px solid #0D211F;
+  }
+  .screen{
+    height:100%;
+    overflow-y:auto;
+    scrollbar-width:none;
+    padding-bottom:32px;
+  }
+  .screen::-webkit-scrollbar{display:none;}
+
+  .status-bar{
+    display:flex;
+    justify-content:space-between;
+    align-items:center;
+    padding:16px 26px 6px;
+    font-size:13px;
+    color:var(--text-1);
+    font-weight:600;
+    font-variant-numeric:tabular-nums;
+  }
+
+  .header{
+    background:var(--ink);
+    padding:14px 20px 22px;
+    border-radius:0 0 28px 28px;
+    position:relative;
+    overflow:hidden;
+  }
+  .girih{
+    position:absolute; inset:0; opacity:0.09;
+    background-image:
+      repeating-linear-gradient(45deg, transparent 0 11px, var(--gold) 11px 12px, transparent 12px 23px),
+      repeating-linear-gradient(-45deg, transparent 0 11px, var(--gold) 11px 12px, transparent 12px 23px);
+  }
+  .header-top{
+    display:flex; justify-content:space-between; align-items:center;
+    position:relative; z-index:1;
+  }
+  .header-title{ color:#FBF9F2; font-size:19px; font-weight:800; }
+  .header-sub{ color:#A9BAB6; font-size:12px; margin-top:3px; font-weight:500; }
+  .icon-btn{
+    width:38px;height:38px; border-radius:12px;
+    background:rgba(255,255,255,0.08);
+    display:flex;align-items:center;justify-content:center;
+    border:1px solid rgba(255,255,255,0.12);
+    cursor:pointer;
+  }
+  .icon-btn svg{width:18px;height:18px;stroke:#FBF9F2;}
+
+  .balance-row{ display:flex; gap:10px; margin-top:18px; position:relative; z-index:1; }
+  .balance-chip{
+    flex:1; background:rgba(255,255,255,0.06);
+    border:1px solid rgba(255,255,255,0.10);
+    border-radius:var(--radius-md); padding:12px 14px;
+  }
+  .balance-chip .lbl{color:#9FB2AE; font-size:11px; font-weight:600;}
+  .balance-chip .val{color:#FBF9F2; font-size:17px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums;}
+  .balance-chip.gold .val{color:var(--gold);}
+
+  .section{ padding:16px 20px 0; }
+  .section-title{
+    font-size:13px; font-weight:800; color:var(--text-1);
+    margin-bottom:12px; display:flex; align-items:center; gap:8px;
+  }
+  .section-title .bar{ width:4px; height:14px; background:var(--gold); border-radius:2px; }
+
+  .summary-grid{
+    display:grid;
+    grid-template-columns:1fr 1fr;
+    gap:10px;
+    margin-bottom:6px;
+  }
+  .summary-card{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:14px 14px 12px;
+  }
+  .summary-card .lbl{ font-size:11px; font-weight:600; color:var(--text-3); }
+  .summary-card .val{ font-size:18px; font-weight:800; margin-top:4px; font-variant-numeric:tabular-nums; }
+  .summary-card.income .val{ color:var(--income); }
+  .summary-card.expense .val{ color:var(--danger); }
+  .summary-card.full{ grid-column:1 / -1; }
+  .summary-card .sub{ font-size:11px; color:var(--text-3); margin-top:2px; font-weight:600; }
+
+  .chart-box{
+    background:var(--paper-card);
+    border:1px solid var(--line);
+    border-radius:var(--radius-md);
+    padding:16px 14px 12px;
+    margin-top:12px;
+  }
+  .chart-header{
+    display:flex; justify-content:space-between; align-items:center;
+    margin-bottom:14px;
+  }
+  .chart-header .title{ font-size:13px; font-weight:800; color:var(--text-1); }
+  .chart-legend{ display:flex; gap:12px; font-size:11px; font-weight:600; }
+  .chart-legend span{ display:flex; align-items:center; gap:5px; color:var(--text-2); }
+  .dot{ width:8px; height:8px; border-radius:50%; }
+  .dot.income{ background:var(--income); }
+  .dot.expense{ background:var(--danger); }
+
+  .bars{
+    display:flex;
+    align-items:flex-end;
+    gap:8px;
+    height:110px;
+    padding-top:8px;
+  }
+  .bar-group{
+    flex:1;
+    display:flex;
+    flex-direction:column;
+    align-items:center;
+    gap:6px;
+  }
+  .bar-pair{
+    display:flex;
+    align-items:flex-end;
+    gap:3px;
+    height:90px;
+    width:100%;
+    justify-content:center;
+  }
+  .bar{
+    width:11px;
+    border-radius:4px 4px 2px 2px;
+  }
+  .bar.income{ background:var(--income); }
+  .bar.expense{ background:var(--danger); opacity:0.85; }
+  .bar-label{ font-size:10px; font-weight:700; color:var(--text-3); }
+
+  .filter-row{ display:flex; gap:8px; padding:0 20px 14px; overflow-x:auto; }
+  .filter-row::-webkit-scrollbar{display:none;}
+  .filter-pill{
+    display:flex; align-items:center; gap:6px;
+    background:var(--paper-card); border:1.5px solid var(--line);
+    border-radius:10px; padding:8px 12px; font-size:12px; font-weight:700;
+    color:var(--text-2); white-space:nowrap; flex-shrink:0;
+  }
+  .filter-pill.on{ background:var(--turquoise-soft); border-color:var(--turquoise); color:var(--turquoise); }
+
+  .bank-card{
+    background:linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
+    border-radius:var(--radius-lg); padding:18px 18px 16px; margin-bottom:12px;
+    position:relative; overflow:hidden;
+  }
+  .bank-card::after{
+    content:''; position:absolute; left:-30px; top:-40px; width:140px;height:140px;
+    border-radius:50%; background:radial-gradient(circle, rgba(201,162,39,0.13), transparent 70%);
+  }
+  .bank-card-top{ display:flex; justify-content:space-between; align-items:flex-start; position:relative; z-index:1; }
+  .bank-name{color:#FBF9F2; font-size:14px; font-weight:800;}
+  .bank-owner{color:#9FB2AE; font-size:11.5px; margin-top:2px; font-weight:600;}
+  .bank-badge{
+    font-size:10px; font-weight:800; color:var(--ink);
+    background:var(--gold-soft); padding:4px 9px; border-radius:999px;
+  }
+  .bank-number{
+    color:#D8E2DF; font-size:15.5px; letter-spacing:3px;
+    margin-top:18px; font-variant-numeric:tabular-nums;
+    position:relative; z-index:1; font-weight:600;
+  }
+  .bank-card-bottom{
+    display:flex; justify-content:space-between; align-items:flex-end;
+    margin-top:14px; position:relative; z-index:1;
+  }
+  .bank-balance-lbl{color:#8FA29E; font-size:10.5px; font-weight:600;}
+  .bank-balance-val{color:#FBF9F2; font-size:18px; font-weight:800; margin-top:3px; font-variant-numeric:tabular-nums;}
+  .bank-tx-count{color:#8FA29E; font-size:10.5px; font-weight:600; text-align:left;}
+
+  .tx-list, .merchant-list{ display:flex; flex-direction:column; gap:8px; }
+  .tx-row, .merchant-row{
+    display:flex; align-items:center; gap:12px;
+    background:var(--paper-card); border:1px solid var(--line);
+    border-radius:var(--radius-md); padding:12px 14px;
+  }
+  .tx-row.flag{
+    border-color:var(--gold);
+    background:var(--gold-soft);
+    box-shadow:inset 3px 0 0 var(--gold);
+  }
+  .tx-icon, .merchant-icon{
+    width:38px;height:38px; border-radius:10px;
+    background:var(--turquoise-soft);
+    display:flex;align-items:center;justify-content:center;
+    flex-shrink:0; font-size:13px; font-weight:800; color:var(--turquoise);
+  }
+  .tx-row.flag .tx-icon{ background:#fff; }
+  .tx-body, .merchant-row-body{ flex:1; min-width:0; }
+  .tx-title, .merchant-row-body .name{ font-size:13px; font-weight:800; color:var(--text-1); }
+  .tx-sub, .merchant-row-body .meta{ font-size:11px; color:var(--text-3); margin-top:2px; font-weight:600; }
+  .tx-amount{ font-size:13px; font-weight:800; color:var(--danger); font-variant-numeric:tabular-nums; white-space:nowrap; }
+  .tx-amount.in{ color:var(--income); }
+  .merchant-row-total{ font-size:13px; font-weight:800; color:var(--text-1); font-variant-numeric:tabular-nums; }
+
+  .person-tag{
+    display:inline-flex; align-items:center; gap:5px;
+    background:var(--turquoise-soft); color:var(--turquoise);
+    font-size:10px; font-weight:800;
+    padding:2px 8px 2px 6px; border-radius:999px; margin-top:5px;
+  }
+  .person-tag .dot{ width:6px; height:6px; border-radius:50%; background:var(--turquoise); }
+  .person-tag.mom{ background:#EDE9F8; color:#7A6BC9; }
+  .person-tag.mom .dot{ background:#7A6BC9; }
+  .person-tag.dad{ background:#F8EAE6; color:#C97B6B; }
+  .person-tag.dad .dot{ background:#C97B6B; }
+
+  .tx-flag-badge{
+    font-size:9px; font-weight:800; color:var(--ink);
+    background:var(--gold); padding:2px 6px; border-radius:5px;
+    margin-top:4px; display:inline-block;
+  }
+
+  .view{ display:none; }
+  .view.active{ display:block; }
+
+  .scrim{
+    position:absolute; inset:0; background:rgba(13,33,31,0.55);
+    opacity:0; pointer-events:none; transition:opacity .25s ease; z-index:20;
+  }
+  .scrim.open{ opacity:1; pointer-events:auto; }
+  .drawer{
+    position:absolute; top:0; bottom:0; right:0;
+    width:280px; background:var(--ink);
+    transform:translateX(100%);
+    transition:transform .3s cubic-bezier(.22,.9,.32,1);
+    z-index:21; padding:26px 20px;
+    display:flex; flex-direction:column;
+    border-radius:28px 0 0 28px; overflow:hidden;
+  }
+  .drawer.open{ transform:translateX(0); }
+  .drawer .girih{ opacity:0.06; }
+  .drawer-head{ position:relative; z-index:1; margin-bottom:24px; }
+  .drawer-avatar{
+    width:46px;height:46px;border-radius:14px;
+    background:var(--gold); color:var(--ink);
+    display:flex;align-items:center;justify-content:center;
+    font-weight:800; font-size:16px; margin-bottom:12px;
+  }
+  .drawer-name{ color:#FBF9F2; font-size:15px; font-weight:800; }
+  .drawer-sub{ color:#8FA29E; font-size:11.5px; margin-top:2px; font-weight:600; }
+  .drawer-nav{ position:relative; z-index:1; display:flex; flex-direction:column; gap:4px; }
+  .drawer-item{
+    display:flex; align-items:center; gap:12px;
+    padding:12px; border-radius:12px; cursor:pointer;
+  }
+  .drawer-item.active{ background:rgba(201,162,39,0.14); }
+  .drawer-item svg{ width:18px; height:18px; stroke:#9FB2AE; flex-shrink:0; }
+  .drawer-item.active svg{ stroke:var(--gold); }
+  .drawer-item .lbl{ color:#CBD8D5; font-size:13px; font-weight:700; flex:1; }
+  .drawer-item.active .lbl{ color:#FBF9F2; }
+  .drawer-item .badge{
+    background:rgba(255,255,255,0.08); color:#9FB2AE;
+    font-size:10px; font-weight:800; padding:2px 8px; border-radius:999px;
+  }
+  .drawer-item.active .badge{ background:var(--gold); color:var(--ink); }
+  .drawer-divider{ height:1px; background:rgba(255,255,255,0.08); margin:16px 0; position:relative; z-index:1; }
+  .drawer-foot{ margin-top:auto; position:relative; z-index:1; }
+  .drawer-foot .drawer-item .lbl{ color:#8FA29E; }
+  .drawer-foot .drawer-item svg{ stroke:#8FA29E; }
+</style>
+</head>
+<body>
+
+<div class="device">
+  <div class="screen">
+
+    <div class="status-bar">
+      <span>۹:۴۱</span>
+      <span style="display:flex; gap:5px; align-items:center;">
+        <span>LTE</span><span>▮▮▮</span><span>🔋</span>
+      </span>
+    </div>
+
+    <div class="header">
+      <div class="girih"></div>
+      <div class="header-top">
+        <div class="icon-btn" onclick="toggleDrawer(true)">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><path d="M4 6h16M4 12h16M4 18h16"/></svg>
+        </div>
+        <div style="text-align:center; flex:1;">
+          <div class="header-title" id="headerTitle">داشبورد</div>
+          <div class="header-sub" id="headerSub">خلاصه وضعیت حساب · این ماه</div>
+        </div>
+        <div class="icon-btn">
+          <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
+        </div>
+      </div>
+
+      <div class="balance-row">
+        <div class="balance-chip">
+          <div class="lbl">موجودی کل</div>
+          <div class="val">۴۲٬۸۰۰٬۰۰۰ ریال</div>
+        </div>
+        <div class="balance-chip gold">
+          <div class="lbl">تراکنش‌های بالای آستانه</div>
+          <div class="val">۳ مورد</div>
+        </div>
+      </div>
+    </div>
+
+    <!-- داشبورد -->
+    <div class="view active" id="view-dashboard">
+      <div class="section">
+        <div class="section-title"><span class="bar"></span>خلاصه این ماه</div>
+        <div class="summary-grid">
+          <div class="summary-card income">
+            <div class="lbl">جمع واریز</div>
+            <div class="val">۴۲.۵ م</div>
+            <div class="sub">+۱۲٪ نسبت به ماه قبل</div>
+          </div>
+          <div class="summary-card expense">
+            <div class="lbl">جمع برداشت</div>
+            <div class="val">۲۸.۱ م</div>
+            <div class="sub">−۵٪ نسبت به ماه قبل</div>
+          </div>
+          <div class="summary-card full">
+            <div class="lbl">مانده</div>
+            <div class="val" style="color:var(--ink)">۱۴.۴ میلیون ریال</div>
+            <div class="sub">پس از کسر برداشت‌ها</div>
+          </div>
+        </div>
+
+        <div class="chart-box">
+          <div class="chart-header">
+            <div class="title">گردش حساب (۶ ماه)</div>
+            <div class="chart-legend">
+              <span><span class="dot income"></span>واریز</span>
+              <span><span class="dot expense"></span>برداشت</span>
+            </div>
+          </div>
+          <div class="bars">
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:70%"></div>
+                <div class="bar expense" style="height:45%"></div>
+              </div>
+              <div class="bar-label">آذر</div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:55%"></div>
+                <div class="bar expense" style="height:60%"></div>
+              </div>
+              <div class="bar-label">دی</div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:80%"></div>
+                <div class="bar expense" style="height:50%"></div>
+              </div>
+              <div class="bar-label">بهمن</div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:65%"></div>
+                <div class="bar expense" style="height:70%"></div>
+              </div>
+              <div class="bar-label">اسفند</div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:90%"></div>
+                <div class="bar expense" style="height:55%"></div>
+              </div>
+              <div class="bar-label">فروردین</div>
+            </div>
+            <div class="bar-group">
+              <div class="bar-pair">
+                <div class="bar income" style="height:75%"></div>
+                <div class="bar expense" style="height:48%"></div>
+              </div>
+              <div class="bar-label">اردیبهشت</div>
+            </div>
+          </div>
+        </div>
+      </div>
+
+      <div class="section" style="margin-top:8px;">
+        <div class="section-title">
+          <span class="bar"></span>آخرین گردش‌ها
+          <span style="margin-right:auto; font-size:11px; font-weight:700; color:var(--turquoise); cursor:pointer;">مشاهده همه</span>
+        </div>
+        <div class="tx-list">
+          <div class="tx-row">
+            <div class="tx-icon">خرید</div>
+            <div class="tx-body">
+              <div class="tx-title">برداشت - دیجی‌کالا</div>
+              <div class="tx-sub">ملت • امروز ۱۴:۳۲</div>
+            </div>
+            <div class="tx-amount">۱٬۲۴۰٬۰۰۰-</div>
+          </div>
+          <div class="tx-row">
+            <div class="tx-icon">واریز</div>
+            <div class="tx-body">
+              <div class="tx-title">واریز وجه</div>
+              <div class="tx-sub">ملت • امروز ۰۹:۱۵</div>
+            </div>
+            <div class="tx-amount in">۴۲٬۵۰۰٬۰۰۰+</div>
+          </div>
+          <div class="tx-row">
+            <div class="tx-icon">برداشت</div>
+            <div class="tx-body">
+              <div class="tx-title">برداشت - پمپ بنزین</div>
+              <div class="tx-sub">صادرات • دیروز</div>
+            </div>
+            <div class="tx-amount">۹۵۰٬۰۰۰-</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- کارت‌ها -->
+    <div class="view" id="view-cards">
+      <div class="filter-row" style="margin-top:16px;">
+        <div class="filter-pill on">این ماه</div>
+        <div class="filter-pill">همه حساب‌ها</div>
+      </div>
+      <div class="section">
+        <div class="bank-card">
+          <div class="bank-card-top">
+            <div>
+              <div class="bank-name">بانک ملت</div>
+              <div class="bank-owner">کارت • حساب جاری</div>
+            </div>
+            <div class="bank-badge">فعال</div>
+          </div>
+          <div class="bank-number">•••• •••• •••• ۴۵۶۷</div>
+          <div class="bank-card-bottom">
+            <div>
+              <div class="bank-balance-lbl">موجودی</div>
+              <div class="bank-balance-val">۱۸٬۲۰۰٬۰۰۰ ریال</div>
+            </div>
+            <div class="bank-tx-count">۲۶ گردش</div>
+          </div>
+        </div>
+        <div class="bank-card">
+          <div class="bank-card-top">
+            <div>
+              <div class="bank-name">بانک سامان</div>
+              <div class="bank-owner">کارت • حساب پس‌انداز</div>
+            </div>
+            <div class="bank-badge">فعال</div>
+          </div>
+          <div class="bank-number">•••• •••• •••• ۸۸۱۲</div>
+          <div class="bank-card-bottom">
+            <div>
+              <div class="bank-balance-lbl">موجودی</div>
+              <div class="bank-balance-val">۹٬۴۵۰٬۰۰۰ ریال</div>
+            </div>
+            <div class="bank-tx-count">۱۴ گردش</div>
+          </div>
+        </div>
+        <div class="bank-card">
+          <div class="bank-card-top">
+            <div>
+              <div class="bank-name">بانک ملی</div>
+              <div class="bank-owner">کارت • حساب جاری</div>
+            </div>
+            <div class="bank-badge">فعال</div>
+          </div>
+          <div class="bank-number">•••• •••• •••• ۲۲۹۰</div>
+          <div class="bank-card-bottom">
+            <div>
+              <div class="bank-balance-lbl">موجودی</div>
+              <div class="bank-balance-val">۱۵٬۱۵۰٬۰۰۰ ریال</div>
+            </div>
+            <div class="bank-tx-count">۱۹ گردش</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- برداشت‌های پرتکرار -->
+    <div class="view" id="view-merchants">
+      <div class="section" style="padding-top:18px;">
+        <div class="filter-row" style="padding:0 0 12px;">
+          <div class="filter-pill on">این ماه</div>
+          <div class="filter-pill">بیشترین مبلغ</div>
+        </div>
+        <div class="merchant-list">
+          <div class="merchant-row">
+            <div class="merchant-icon">اس</div>
+            <div class="merchant-row-body">
+              <div class="name">اسنپ‌فود</div>
+              <div class="meta">۱۲ برداشت</div>
+              <div class="person-tag"><span class="dot"></span>خودم</div>
+            </div>
+            <div class="merchant-row-total">۳٬۱۰۰٬۰۰۰ ریال</div>
+          </div>
+          <div class="merchant-row">
+            <div class="merchant-icon">دک</div>
+            <div class="merchant-row-body">
+              <div class="name">دیجی‌کالا</div>
+              <div class="meta">۷ برداشت</div>
+              <div class="person-tag"><span class="dot"></span>خودم</div>
+            </div>
+            <div class="merchant-row-total">۵٬۸۰۰٬۰۰۰ ریال</div>
+          </div>
+          <div class="merchant-row">
+            <div class="merchant-icon">تپ</div>
+            <div class="merchant-row-body">
+              <div class="name">تپسی</div>
+              <div class="meta">۹ برداشت</div>
+              <div class="person-tag mom"><span class="dot"></span>مادر</div>
+            </div>
+            <div class="merchant-row-total">۱٬۲۰۰٬۰۰۰ ریال</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- تراکنش‌های بالای آستانه -->
+    <div class="view" id="view-flagged">
+      <div class="section" style="padding-top:18px;">
+        <div class="filter-row" style="padding:0 0 12px;">
+          <div class="filter-pill on">بالای ۵ میلیون ریال</div>
+          <div class="filter-pill">همه حساب‌ها</div>
+        </div>
+        <div class="tx-list">
+          <div class="tx-row flag">
+            <div class="tx-icon">برداشت</div>
+            <div class="tx-body">
+              <div class="tx-title">برداشت - اجاره مسکن</div>
+              <div class="tx-sub">ملت · ۱۴۰۴/۰۵/۰۱</div>
+              <div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">
+                <span class="tx-flag-badge">بالای آستانه</span>
+                <div class="person-tag"><span class="dot"></span>خودم</div>
+              </div>
+            </div>
+            <div class="tx-amount">۱۲٬۰۰۰٬۰۰۰-</div>
+          </div>
+          <div class="tx-row flag">
+            <div class="tx-icon">انتقال</div>
+            <div class="tx-body">
+              <div class="tx-title">انتقال وجه</div>
+              <div class="tx-sub">سامان · ۱۴۰۴/۰۴/۲۸</div>
+              <div style="display:flex; gap:6px; margin-top:5px; flex-wrap:wrap;">
+                <span class="tx-flag-badge">بالای آستانه</span>
+                <div class="person-tag mom"><span class="dot"></span>مادر</div>
+              </div>
+            </div>
+            <div class="tx-amount">۷٬۵۰۰٬۰۰۰-</div>
+          </div>
+          <div class="tx-row">
+            <div class="tx-icon">واریز</div>
+            <div class="tx-body">
+              <div class="tx-title">واریز وجه</div>
+              <div class="tx-sub">ملت · ۱۴۰۴/۰۴/۲۵</div>
+              <div class="person-tag"><span class="dot"></span>خودم</div>
+            </div>
+            <div class="tx-amount in">۲۲٬۰۰۰٬۰۰۰+</div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+  </div>
+
+  <!-- Drawer -->
+  <div class="scrim" id="scrim" onclick="toggleDrawer(false)"></div>
+  <div class="drawer" id="drawer">
+    <div class="girih"></div>
+    <div class="drawer-head">
+      <div class="drawer-avatar">ع.ت</div>
+      <div class="drawer-name">علیرضا ترنه‌جو</div>
+      <div class="drawer-sub">دفترچه حساب</div>
+    </div>
+    <div class="drawer-nav">
+      <div class="drawer-item active" onclick="setView('dashboard', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><rect x="14" y="14" width="7" height="7" rx="1"/></svg>
+        <span class="lbl">داشبورد</span>
+      </div>
+      <div class="drawer-item" onclick="setView('cards', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="2" y="6" width="20" height="12" rx="2"/><path d="M2 10h20"/></svg>
+        <span class="lbl">حساب‌ها و کارت‌ها</span>
+        <span class="badge">۳</span>
+      </div>
+      <div class="drawer-item" onclick="setView('merchants', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 3"/></svg>
+        <span class="lbl">برداشت‌های پرتکرار</span>
+      </div>
+      <div class="drawer-item" onclick="setView('flagged', this)">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 2l9 4v6c0 5-3.8 8-9 10-5.2-2-9-5-9-10V6l9-4z"/></svg>
+        <span class="lbl">تراکنش‌های بالای آستانه</span>
+        <span class="badge">۳</span>
+      </div>
+    </div>
+    <div class="drawer-divider"></div>
+    <div class="drawer-nav">
+      <div class="drawer-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
+        <span class="lbl">امنیت و قفل</span>
+      </div>
+      <div class="drawer-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v12M7 8l5-5 5 5M5 21h14"/></svg>
+        <span class="lbl">خروجی گزارش</span>
+      </div>
+    </div>
+    <div class="drawer-foot">
+      <div class="drawer-item">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><circle cx="12" cy="12" r="3"/><path d="M19.4 15a1.7 1.7 0 00.3 1.9l.1.1a2 2 0 11-2.9 2.9l-.1-.1a1.7 1.7 0 00-1.9-.3 1.7 1.7 0 00-1 1.6V21a2 2 0 11-4 0v-.1a1.7 1.7 0 00-1-1.6 1.7 1.7 0 00-1.9.3l-.1.1a2 2 0 11-2.9-2.9l.1-.1a1.7 1.7 0 00.3-1.9 1.7 1.7 0 00-1.6-1H3a2 2 0 110-4h.1a1.7 1.7 0 001.6-1 1.7 1.7 0 00-.3-1.9l-.1-.1a2 2 0 112.9-2.9l.1.1a1.7 1.7 0 001.9.3H9a1.7 1.7 0 001-1.6V3a2 2 0 114 0v.1a1.7 1.7 0 001 1.6 1.7 1.7 0 001.9-.3l.1-.1a2 2 0 112.9 2.9l-.1.1a1.7 1.7 0 00-.3 1.9V9a1.7 1.7 0 001.6 1H21a2 2 0 110 4h-.1a1.7 1.7 0 00-1.6 1z"/></svg>
+        <span class="lbl">تنظیمات</span>
+      </div>
+    </div>
+  </div>
+</div>
+
+<script>
+  const titles = {
+    dashboard: ['داشبورد', 'خلاصه وضعیت حساب · این ماه'],
+    cards: ['حساب‌ها و کارت‌ها', '۳ حساب · آخرین بروزرسانی: امروز'],
+    merchants: ['برداشت‌های پرتکرار', 'بر اساس پذیرنده'],
+    flagged: ['تراکنش‌های بالای آستانه', 'مبالغ بالاتر از سقف تعیین‌شده']
+  };
+
+  function setView(name, el){
+    document.querySelectorAll('.view').forEach(v => v.classList.remove('active'));
+    document.getElementById('view-' + name).classList.add('active');
+    document.querySelectorAll('.drawer-item').forEach(i => i.classList.remove('active'));
+    if(el) el.classList.add('active');
+    document.getElementById('headerTitle').textContent = titles[name][0];
+    document.getElementById('headerSub').textContent = titles[name][1];
+    toggleDrawer(false);
+    document.querySelector('.screen').scrollTo(0,0);
+  }
+
+  function toggleDrawer(open){
+    document.getElementById('drawer').classList.toggle('open', open);
+    document.getElementById('scrim').classList.toggle('open', open);
+  }
+</script>
+
+</body>
+</html>
