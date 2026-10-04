@@ -25,8 +25,10 @@ class FinanceBridge(
                 put("bank", t.bank)
                 put("cardLast4", t.cardLast4)
                 put("person", t.person)
+                put("category", t.category)
                 put("source", t.source)
                 put("confidence", t.confidence)
+                put("needsReview", t.needsReview)
             })
         }
         return array.toString()
@@ -47,9 +49,11 @@ class FinanceBridge(
 
     @JavascriptInterface
     fun importSms(): String {
-        if (!hasSmsPermission()) return JSONObject().put("ok", false).put("error", "permission").toString()
-        val resolver = activity.contentResolver
-        val cursor = resolver.query(
+        if (!hasSmsPermission()) {
+            return JSONObject().put("ok", false).put("error", "permission").toString()
+        }
+
+        val cursor = activity.contentResolver.query(
             Telephony.Sms.Inbox.CONTENT_URI,
             arrayOf(Telephony.Sms.ADDRESS, Telephony.Sms.BODY, Telephony.Sms.DATE),
             null,
@@ -58,23 +62,31 @@ class FinanceBridge(
         ) ?: return JSONObject().put("ok", false).put("error", "read_failed").toString()
 
         val parsed = mutableListOf<Transaction>()
+        var scanned = 0
+        var recognized = 0
+
         cursor.use {
             val addressIndex = it.getColumnIndex(Telephony.Sms.ADDRESS)
             val bodyIndex = it.getColumnIndex(Telephony.Sms.BODY)
             val dateIndex = it.getColumnIndex(Telephony.Sms.DATE)
-            var scanned = 0
+
             while (it.moveToNext() && scanned < 5000) {
                 scanned++
                 val address = if (addressIndex >= 0) it.getString(addressIndex) else ""
                 val body = if (bodyIndex >= 0) it.getString(bodyIndex) else ""
-                val date = if (dateIndex >= 0) it.getLong(dateIndex) else System.currentTimeMillis()
-                SmsTransactionParser.parse(address, body, date)?.let { parsed += it }
+                val date = if (dateIndex >= 0) it.getLong(dateIndex) else 0L
+                SmsTransactionParser.parse(address, body, date)?.let {
+                    parsed += it
+                    recognized++
+                }
             }
         }
+
         val added = repository.addAll(parsed)
         return JSONObject()
             .put("ok", true)
-            .put("scanned", parsed.size)
+            .put("scanned", scanned)
+            .put("recognized", recognized)
             .put("added", added)
             .toString()
     }
