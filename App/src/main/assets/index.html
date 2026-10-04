@@ -10,39 +10,39 @@
   :root{
     --ink:#16302E;
     --ink-2:#1F433F;
-    --paper:#F2F0E6;
-    --paper-card:#FFFFFF;
-    --line:#E4E1D4;
-    --gold:#C9A227;
-    --gold-soft:#F3E9C7;
-    --turquoise:#2E8B8B;
-    --turquoise-soft:#DCEDEC;
-    --text-1:#16302E;
-    --text-2:#5B6B67;
-    --text-3:#8B978F;
-    --danger:#A23B3B;
-    --income:#1F7A6B;
+    --paper:#0A0F14;
+    --paper-card:#111A20;
+    --line:rgba(255,255,255,0.09);
+    --gold:#D7B85A;
+    --gold-soft:rgba(215,184,90,0.14);
+    --turquoise:#3AA9A0;
+    --turquoise-soft:rgba(58,169,160,0.14);
+    --text-1:#F1F5F4;
+    --text-2:#A5B4B1;
+    --text-3:#72817E;
+    --danger:#E06B72;
+    --income:#55C7A6;
     --radius-lg:20px;
     --radius-md:14px;
     --radius-sm:10px;
   }
   *{box-sizing:border-box; margin:0; padding:0;}
   body{
-    background:#DAD6C6;
+    background:#05080B;
     display:flex;
     justify-content:center;
     padding:32px 12px;
     font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
   }
-  .device{
+   .device{
     width:min(390px,100vw);
     height:min(844px,100vh);
     background:var(--paper);
     border-radius:44px;
     overflow:hidden;
-    box-shadow:0 30px 60px rgba(22,48,46,0.35);
+    box-shadow:0 30px 70px rgba(0,0,0,0.55);
     position:relative;
-    border:8px solid #0D211F;
+    border:1px solid rgba(255,255,255,0.08);
   }
   .screen{
     height:100%;
@@ -114,7 +114,8 @@
     gap:10px;
     margin-bottom:6px;
   }
-  .summary-card{
+   .summary-card{
+    box-shadow:0 10px 28px rgba(0,0,0,.18);
     background:var(--paper-card);
     border:1px solid var(--line);
     border-radius:var(--radius-md);
@@ -127,7 +128,8 @@
   .summary-card.full{ grid-column:1 / -1; }
   .summary-card .sub{ font-size:11px; color:var(--text-3); margin-top:2px; font-weight:600; }
 
-  .chart-box{
+   .chart-box{
+    box-shadow:0 10px 28px rgba(0,0,0,.18);
     background:var(--paper-card);
     border:1px solid var(--line);
     border-radius:var(--radius-md);
@@ -185,7 +187,8 @@
   }
   .filter-pill.on{ background:var(--turquoise-soft); border-color:var(--turquoise); color:var(--turquoise); }
 
-  .bank-card{
+   .bank-card{
+    box-shadow:0 16px 34px rgba(0,0,0,.28);
     background:linear-gradient(135deg, var(--ink) 0%, var(--ink-2) 100%);
     border-radius:var(--radius-lg); padding:18px 18px 16px; margin-bottom:12px;
     position:relative; overflow:hidden;
@@ -215,7 +218,8 @@
   .bank-tx-count{color:#8FA29E; font-size:10.5px; font-weight:600; text-align:left;}
 
   .tx-list, .merchant-list{ display:flex; flex-direction:column; gap:8px; }
-  .tx-row, .merchant-row{
+   .tx-row, .merchant-row{
+    box-shadow:0 8px 22px rgba(0,0,0,.12);
     display:flex; align-items:center; gap:12px;
     background:var(--paper-card); border:1px solid var(--line);
     border-radius:var(--radius-md); padding:12px 14px;
@@ -308,6 +312,20 @@
     body{padding:0;background:var(--paper);}
     .device{width:100vw;height:100vh;border:0;border-radius:0;box-shadow:none;}
   }
+  
+  .privacy-strip{
+    display:flex;align-items:center;gap:7px;margin-top:12px;
+    color:#9FB2AE;font-size:10px;font-weight:700;position:relative;z-index:1;
+    padding:7px 9px;border:1px solid rgba(58,169,160,.18);
+    background:rgba(58,169,160,.06);border-radius:10px;
+  }
+  .privacy-dot{width:7px;height:7px;border-radius:50%;background:var(--turquoise);box-shadow:0 0 0 3px rgba(58,169,160,.10);}
+  .privacy-text{margin-right:auto;color:#71837F;font-weight:600;}
+  .summary-card.full .val{color:#F1F5F4 !important;}
+  .filter-pill.on{box-shadow:0 0 0 3px rgba(58,169,160,.06);}
+  .drawer-item:focus-visible,.icon-btn:focus-visible,.filter-pill:focus-visible{outline:2px solid var(--turquoise);outline-offset:2px;}
+  @media (max-width:500px){.device{border:0;}.privacy-strip{margin-top:10px;}}
+
   </style>
 </head>
 <body>
@@ -330,12 +348,14 @@
         </div>
         <div style="text-align:center; flex:1;">
           <div class="header-title" id="headerTitle">داشبورد</div>
-          <div class="header-sub" id="headerSub">خلاصه تراکنش‌های ثبت‌شده · این ماه</div>
+          <div class="header-sub" id="headerSub">خلاصه وضعیت مالی · پردازش کاملاً محلی</div>
         </div>
         <div class="icon-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
         </div>
       </div>
+
+      <div class="privacy-strip"><span class="privacy-dot"></span><span>خصوصی و محلی</span><span class="privacy-text">داده‌ها روی دستگاه شما می‌مانند</span></div>
 
       <div class="balance-row">
         <div class="balance-chip">
