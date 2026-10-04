@@ -3,7 +3,6 @@ package com.banksms.manager
 import android.content.Context
 import org.json.JSONArray
 import org.json.JSONObject
-import java.util.UUID
 
 class TransactionRepository(context: Context) {
     private val store = SecureStore(context)
@@ -11,21 +10,25 @@ class TransactionRepository(context: Context) {
 
     fun all(): MutableList<Transaction> {
         val raw = store.get(key, "[]")
-        val array = JSONArray(raw)
+        val array = runCatching { JSONArray(raw) }.getOrElse { JSONArray() }
         val result = mutableListOf<Transaction>()
         for (i in 0 until array.length()) {
-            val o = array.getJSONObject(i)
+            val o = runCatching { array.getJSONObject(i) }.getOrNull() ?: continue
+            val amount = o.optLong("amount", -1L)
+            if (amount <= 0L) continue
             result += Transaction(
                 id = o.optString("id"),
                 timestamp = o.optLong("timestamp"),
                 type = o.optString("type"),
-                amount = o.optLong("amount"),
+                amount = amount,
                 description = o.optString("description"),
                 bank = o.optString("bank"),
                 cardLast4 = o.optString("cardLast4"),
                 person = o.optString("person"),
+                category = o.optString("category"),
                 source = o.optString("source"),
                 confidence = o.optInt("confidence"),
+                needsReview = o.optBoolean("needsReview"),
                 raw = o.optString("raw")
             )
         }
@@ -37,7 +40,8 @@ class TransactionRepository(context: Context) {
         val ids = existing.map { it.id }.toMutableSet()
         var added = 0
         for (item in items) {
-            val stableId = if (item.id.isBlank()) UUID.randomUUID().toString() else item.id
+            if (item.amount <= 0L || item.timestamp <= 0L) continue
+            val stableId = item.id.ifBlank { continue }
             if (ids.add(stableId)) {
                 existing += item.copy(id = stableId)
                 added++
@@ -61,8 +65,10 @@ class TransactionRepository(context: Context) {
                 put("bank", t.bank)
                 put("cardLast4", t.cardLast4)
                 put("person", t.person)
+                put("category", t.category)
                 put("source", t.source)
                 put("confidence", t.confidence)
+                put("needsReview", t.needsReview)
                 put("raw", t.raw)
             })
         }
