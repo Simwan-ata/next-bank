@@ -3,8 +3,8 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>مدیریت مالی - نسخه ۱</title>
-<link href="https://cdnjs.cloudflare.com/ajax/libs/vazirmatn/33.003/Vazirmatn-font-face.css" rel="stylesheet">
+<title>مدیریت مالی — نسخه ۱.۱</title>
+
 <style>
   :root{
     --ink:#16302E;
@@ -31,11 +31,11 @@
     display:flex;
     justify-content:center;
     padding:32px 12px;
-    font-family:'Vazirmatn', sans-serif;
+    font-family:system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI', Tahoma, sans-serif;
   }
   .device{
-    width:390px;
-    height:844px;
+    width:min(390px,100vw);
+    height:min(844px,100vh);
     background:var(--paper);
     border-radius:44px;
     overflow:hidden;
@@ -303,7 +303,11 @@
   .drawer-foot{ margin-top:auto; position:relative; z-index:1; }
   .drawer-foot .drawer-item .lbl{ color:#8FA29E; }
   .drawer-foot .drawer-item svg{ stroke:#8FA29E; }
-</style>
+@media (max-width:500px){
+    body{padding:0;background:var(--paper);}
+    .device{width:100vw;height:100vh;border:0;border-radius:0;box-shadow:none;}
+  }
+  </style>
 </head>
 <body>
 
@@ -637,9 +641,13 @@
         <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><rect x="3" y="11" width="18" height="10" rx="2"/><path d="M7 11V7a5 5 0 0110 0v4"/></svg>
         <span class="lbl">امنیت و قفل</span>
       </div>
-      <div class="drawer-item">
-        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v12M7 8l5-5 5 5M5 21h14"/></svg>
-        <span class="lbl">خروجی گزارش</span>
+      <div class="drawer-item" onclick="importSms()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M12 3v12M7 10l5 5 5-5M5 21h14"/></svg>
+        <span class="lbl">خواندن پیامک‌های بانکی</span>
+      </div>
+      <div class="drawer-item" onclick="clearLocalData()">
+        <svg viewBox="0 0 24 24" fill="none" stroke-width="2"><path d="M4 7h16M10 11v6M14 11v6M6 7l1 14h10l1-14M9 7l1-3h4l1 3"/></svg>
+        <span class="lbl">پاک‌سازی داده‌های محلی</span>
       </div>
     </div>
     <div class="drawer-foot">
@@ -674,6 +682,95 @@
     document.getElementById('drawer').classList.toggle('open', open);
     document.getElementById('scrim').classList.toggle('open', open);
   }
+
+  function formatNumber(n){
+    return new Intl.NumberFormat('fa-IR').format(Math.round(Number(n)||0));
+  }
+  function formatMoney(n){ return formatNumber(n) + ' ریال'; }
+
+  function renderRealData(){
+    if(!window.AndroidFinance) return;
+    let rows=[];
+    try { rows=JSON.parse(AndroidFinance.getTransactions()||'[]'); } catch(e){ return; }
+
+    const income=rows.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount||0),0);
+    const expense=rows.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount||0),0);
+    const balance=income-expense;
+    const flagged=rows.filter(x=>Number(x.amount||0)>=5000000).length;
+
+    const chips=document.querySelectorAll('.balance-chip .val');
+    if(chips[0]) chips[0].textContent=formatMoney(balance);
+    if(chips[1]) chips[1].textContent=formatNumber(flagged)+' مورد';
+
+    const summary=document.querySelectorAll('.summary-card .val');
+    if(summary[0]) summary[0].textContent=(income/1000000).toLocaleString('fa-IR',{maximumFractionDigits:1})+' م';
+    if(summary[1]) summary[1].textContent=(expense/1000000).toLocaleString('fa-IR',{maximumFractionDigits:1})+' م';
+    if(summary[2]) summary[2].textContent=formatMoney(balance);
+
+    const recent=document.querySelector('#view-dashboard .tx-list');
+    if(recent){
+      recent.innerHTML = rows.slice(0,5).map(t=>{
+        const sign=t.type==='income'?'+':'-';
+        const cls=t.type==='income'?'in':'';
+        const label=t.description || (t.type==='income'?'واریز وجه':'برداشت');
+        const bank=t.bank?(' · '+t.bank):'';
+        const date=new Date(Number(t.timestamp||0)).toLocaleDateString('fa-IR');
+        return '<div class="tx-row"><div class="tx-icon">'+(t.type==='income'?'واریز':'برداشت')+'</div>'+
+          '<div class="tx-body"><div class="tx-title">'+escapeHtml(label)+'</div>'+
+          '<div class="tx-sub">'+escapeHtml(bank.replace(' · ','') || 'منبع: پیامک')+' · '+date+'</div>'+
+          (t.confidence<70?'<div class="tx-flag-badge" style="background:#F3E9C7">نیازمند بررسی</div>':'')+
+          '</div><div class="tx-amount '+cls+'">'+formatNumber(t.amount)+sign+'</div></div>';
+      }).join('') || '<div class="tx-row"><div class="tx-body"><div class="tx-title">هنوز تراکنشی وارد نشده است</div><div class="tx-sub">از منوی «خواندن پیامک‌های بانکی» استفاده کنید.</div></div></div>';
+    }
+
+    const flaggedView=document.querySelector('#view-flagged .tx-list');
+    if(flaggedView){
+      const high=rows.filter(t=>Number(t.amount||0)>=5000000).slice(0,50);
+      flaggedView.innerHTML=high.map(t=>{
+        const sign=t.type==='income'?'+':'-';
+        return '<div class="tx-row flag"><div class="tx-icon">'+(t.type==='income'?'واریز':'برداشت')+'</div>'+
+          '<div class="tx-body"><div class="tx-title">'+escapeHtml(t.description||'تراکنش')+'</div>'+
+          '<div class="tx-sub">'+escapeHtml(t.bank||'بانک نامشخص')+' · '+new Date(Number(t.timestamp||0)).toLocaleDateString('fa-IR')+'</div>'+
+          '<span class="tx-flag-badge">بالای آستانه</span></div>'+
+          '<div class="tx-amount '+(t.type==='income'?'in':'')+'">'+formatNumber(t.amount)+sign+'</div></div>';
+      }).join('') || '<div class="tx-row"><div class="tx-body"><div class="tx-title">تراکنش بالای آستانه‌ای ثبت نشده است</div></div></div>';
+    }
+  }
+
+  function escapeHtml(value){
+    return String(value??'').replace(/[&<>"']/g,m=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;',"'":'&#039;'}[m]));
+  }
+
+  function importSms(){
+    if(!window.AndroidFinance) return;
+    if(!AndroidFinance.hasSmsPermission()){
+      AndroidFinance.requestSmsPermission();
+      return;
+    }
+    const result=JSON.parse(AndroidFinance.importSms());
+    if(result.ok){ renderRealData(); alert(result.added+' تراکنش جدید وارد شد.'); }
+    else alert('خواندن پیامک‌ها انجام نشد.');
+  }
+
+  window.onSmsPermissionGranted=function(){
+    const result=JSON.parse(AndroidFinance.importSms());
+    if(result.ok){ renderRealData(); alert(result.added+' تراکنش جدید وارد شد.'); }
+  }
+
+  function clearLocalData(){
+    if(confirm('تمام تراکنش‌های ذخیره‌شده روی این دستگاه حذف شوند؟')){
+      AndroidFinance.clearData();
+      renderRealData();
+    }
+  }
+
+  (function(){
+    const now=new Date();
+    const time=now.toLocaleTimeString('fa-IR',{hour:'2-digit',minute:'2-digit'});
+    const status=document.querySelector('.status-bar > span:first-child');
+    if(status) status.textContent=time;
+    renderRealData();
+  })();
 </script>
 
 </body>
