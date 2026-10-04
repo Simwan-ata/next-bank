@@ -1,79 +1,99 @@
 package com.banksms.manager
 
+import java.util.Locale
 import java.util.regex.Pattern
-import java.util.UUID
 
 object SmsTransactionParser {
-    private val amountPattern = Pattern.compile(
-        "(?:مبلغ|مبلغ تراکنش|برداشت|واریز|خرید|انتقال)[^۰-۹0-9]{0,30}([۰-۹0-9][۰-۹0-9,٬. ]{2,})",
-        Pattern.CASE_INSENSITIVE
+    private val amountPatterns = listOf(
+        Pattern.compile("(?:مبلغ(?:\\s+تراکنش)?|مبلغ خرید|مبلغ واریز|مبلغ برداشت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]+)"),
+        Pattern.compile("(?:خرید|برداشت|واریز|دریافت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]+)"),
+        Pattern.compile("([0-9۰-۹][0-9۰-۹,٬. ]{3,})\\s*(?:ریال|ريال|تومان|تومن)")
     )
-    private val cardPattern = Pattern.compile("(?:کارت|card)[^۰-۹0-9]{0,15}([۰-۹0-9]{4})")
+    private val cardPattern = Pattern.compile("(?:کارت|card)[^۰-۹0-9]{0,20}([۰-۹0-9]{4})", Pattern.CASE_INSENSITIVE)
     private val bankNames = listOf(
-        "ملت" to "ملت", "ملی" to "ملی", "سامان" to "سامان",
-        "صادرات" to "صادرات", "تجارت" to "تجارت", "رفاه" to "رفاه",
-        "پارسیان" to "پارسیان", "پاسارگاد" to "پاسارگاد",
-        "کشاورزی" to "کشاورزی", "مهر" to "مهر", "رسالت" to "رسالت"
+        "ملت" to "ملت", "ملی" to "ملی", "سامان" to "سامان", "صادرات" to "صادرات",
+        "تجارت" to "تجارت", "رفاه" to "رفاه", "پارسیان" to "پارسیان",
+        "پاسارگاد" to "پاسارگاد", "کشاورزی" to "کشاورزی", "مهر" to "مهر",
+        "رسالت" to "رسالت", "موسسه ملل" to "ملل"
     )
 
     fun parse(address: String?, body: String, timestamp: Long): Transaction? {
-        val normalized = normalizeDigits(body)
-        val amount = extractAmount(normalized) ?: return null
+        val text = normalize(body)
+        val amount = extractAmount(text) ?: return null
+
         val type = when {
-            normalized.contains("برداشت") || normalized.contains("خرید") -> "expense"
-            normalized.contains("واریز") || normalized.contains("دریافت") -> "income"
-            normalized.contains("انتقال") -> if (normalized.contains("واریز")) "income" else "transfer"
+            Regex("برداشت|خرید|پرداخت|کسر").containsMatchIn(text) -> "expense"
+            Regex("واریز|دریافت|افزایش").containsMatchIn(text) -> "income"
             else -> return null
         }
-        val bank = bankNames.firstOrNull { normalized.contains(it.first) }?.second ?: ""
-        val card = cardPattern.matcher(normalized).let { if (it.find()) it.group(1) ?: "" else "" }
-        val description = when {
-            normalized.contains("خرید") -> "خرید"
-            normalized.contains("انتقال") -> "انتقال وجه"
-            normalized.contains("برداشت") -> "برداشت"
-            else -> "واریز وجه"
+
+        if (Regex("موجودی").containsMatchIn(text) &&
+            !Regex("خرید|برداشت|واریز|دریافت|پرداخت").containsMatchIn(text)
+        ) return null
+
+        val bank = bankNames.firstOrNull { text.contains(it.first) }?.second ?: ""
+        val card = cardPattern.matcher(text).let { if (it.find()) it.group(1) ?: "" else "" }
+        val merchant = extractMerchant(text)
+        val category = when {
+            text.contains("خرید") || text.contains("فروشگاه") -> "خرید"
+            text.contains("بنزین") || text.contains("سوخت") -> "حمل‌ونقل"
+            text.contains("قبض") || text.contains("آب") || text.contains("برق") || text.contains("گاز") -> "قبوض"
+            text.contains("حقوق") || text.contains("دستمزد") -> "حقوق"
+            else -> if (type == "income") "درآمد" else "سایر"
         }
-        val stable = (address ?: "") + "|" + timestamp + "|" + amount + "|" + normalized.take(120)
+
+        val stableSource = "${address ?: ""}|$timestamp|$amount|${text.take(180)}"
         return Transaction(
-            id = stable.hashCode().toString(),
+            id = stableSource.hashCode().toString(),
             timestamp = timestamp,
             type = type,
             amount = amount,
-            description = description,
+            description = merchant.ifBlank { if (type == "income") "واریز وجه" else "برداشت" },
             bank = bank,
             cardLast4 = card,
             source = "sms",
-            confidence = calculateConfidence(normalized, amount, bank),
+            confidence = confidence(text, bank, merchant),
             raw = body
         )
     }
 
     private fun extractAmount(text: String): Long? {
-        val matcher = amountPattern.matcher(text)
-        if (!matcher.find()) return null
-        val digits = matcher.group(1)
-            ?.replace(",", "")
-            ?.replace("٬", "")
-            ?.replace(".", "")
-            ?.replace(" ", "")
-            ?: return null
-        return digits.toLongOrNull()?.takeIf { it > 0 }
+        for (pattern in amountPatterns) {
+            val m = pattern.matcher(text)
+            if (!m.find()) continue
+            val raw = m.group(1)?.replace(",", "")?.replace("٬", "")?.replace(".", "")?.replace(" ", "") ?: continue
+            val tail = text.substring(m.start(), (m.end() + 12).coerceAtMost(text.length))
+            val value = raw.toLongOrNull() ?: continue
+            return if (tail.contains("تومان") || tail.contains("تومن")) value * 10 else value
+        }
+        return null
     }
 
-    private fun calculateConfidence(text: String, amount: Long, bank: String): Int {
-        var score = 50
-        if (amount > 0) score += 20
+    private fun extractMerchant(text: String): String {
+        val patterns = listOf(
+            Regex("پذیرنده\\s*[:：]?\\s*([^،\\n]+)"),
+            Regex("فروشگاه\\s*[:：]?\\s*([^،\\n]+)")
+        )
+        return patterns.firstNotNullOfOrNull { it.find(text)?.groupValues?.getOrNull(1)?.trim() } ?: ""
+    }
+
+    private fun confidence(text: String, bank: String, merchant: String): Int {
+        var score = 35
+        if (Regex("مبلغ|خرید|برداشت|واریز|دریافت").containsMatchIn(text)) score += 25
         if (bank.isNotBlank()) score += 15
-        if (text.contains("تراکنش") || text.contains("موجودی")) score += 10
+        if (merchant.isNotBlank()) score += 10
+        if (Regex("کارت|پیگیری|مرجع|تراکنش").containsMatchIn(text)) score += 10
         return score.coerceAtMost(100)
     }
 
-    private fun normalizeDigits(input: String): String =
+    private fun normalize(input: String): String =
         input.map { c ->
             when (c) {
-                in '۰'..'۹' -> ('0'.code + (c.code - '۰'.code)).toChar()
-                in '٠'..'٩' -> ('0'.code + (c.code - '٠'.code)).toChar()
+                in '۰'..'۹' -> ('0'.code + c.code - '۰'.code).toChar()
+                in '٠'..'٩' -> ('0'.code + c.code - '٠'.code).toChar()
+                'ي' -> 'ی'
+                'ك' -> 'ک'
                 else -> c
             }
-        }.joinToString("")
+        }.joinToString("").lowercase(Locale("fa"))
 }
