@@ -9,7 +9,9 @@ data class Transaction(
     val bank: String,
     val cardLast4: String = "",
     val person: String = "",
+    val category: String = "",
     val source: String = "sms",
     val confidence: Int = 0,
+    val needsReview: Boolean = false,
     val raw: String = ""
 )
