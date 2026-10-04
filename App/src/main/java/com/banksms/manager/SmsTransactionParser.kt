@@ -1,12 +1,15 @@
 package com.banksms.manager
 
+import java.math.BigInteger
+import java.nio.charset.StandardCharsets
+import java.security.MessageDigest
 import java.util.Locale
 import java.util.regex.Pattern
 
 object SmsTransactionParser {
     private val amountPatterns = listOf(
-        Pattern.compile("(?:مبلغ(?:\\s+تراکنش)?|مبلغ خرید|مبلغ واریز|مبلغ برداشت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]+)"),
-        Pattern.compile("(?:خرید|برداشت|واریز|دریافت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]+)"),
+        Pattern.compile("(?:مبلغ(?:\\s+تراکنش)?|مبلغ خرید|مبلغ واریز|مبلغ برداشت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]*)"),
+        Pattern.compile("(?:خرید|برداشت|واریز|دریافت)\\s*[:：]?\\s*([0-9۰-۹][0-9۰-۹,٬. ]*)"),
         Pattern.compile("([0-9۰-۹][0-9۰-۹,٬. ]{3,})\\s*(?:ریال|ريال|تومان|تومن)")
     )
     private val cardPattern = Pattern.compile("(?:کارت|card)[^۰-۹0-9]{0,20}([۰-۹0-9]{4})", Pattern.CASE_INSENSITIVE)
@@ -17,9 +20,12 @@ object SmsTransactionParser {
         "رسالت" to "رسالت", "موسسه ملل" to "ملل"
     )
 
-    fun parse(address: String?, body: String, timestamp: Long): Transaction? {
+    fun parse(address: String?, body: String?, timestamp: Long): Transaction? {
+        if (body.isNullOrBlank() || timestamp <= 0L) return null
+
         val text = normalize(body)
         val amount = extractAmount(text) ?: return null
+        if (amount <= 0L) return null
 
         val type = when {
             Regex("برداشت|خرید|پرداخت|کسر").containsMatchIn(text) -> "expense"
@@ -42,17 +48,20 @@ object SmsTransactionParser {
             else -> if (type == "income") "درآمد" else "سایر"
         }
 
-        val stableSource = "${address ?: ""}|$timestamp|$amount|${text.take(180)}"
+        val stableSource = "${address.orEmpty()}|$timestamp|$amount|${text.take(180)}"
+        val score = confidence(text, bank, merchant)
         return Transaction(
-            id = stableSource.hashCode().toString(),
+            id = sha256(stableSource),
             timestamp = timestamp,
             type = type,
             amount = amount,
             description = merchant.ifBlank { if (type == "income") "واریز وجه" else "برداشت" },
             bank = bank,
             cardLast4 = card,
+            category = category,
             source = "sms",
-            confidence = confidence(text, bank, merchant),
+            confidence = score,
+            needsReview = score < 70,
             raw = body
         )
     }
@@ -61,10 +70,20 @@ object SmsTransactionParser {
         for (pattern in amountPatterns) {
             val m = pattern.matcher(text)
             if (!m.find()) continue
-            val raw = m.group(1)?.replace(",", "")?.replace("٬", "")?.replace(".", "")?.replace(" ", "") ?: continue
+            val raw = m.group(1)
+                ?.replace(",", "")
+                ?.replace("٬", "")
+                ?.replace(".", "")
+                ?.replace(" ", "")
+                ?: continue
+            if (raw.isBlank()) continue
+
+            val value = runCatching { BigInteger(raw) }.getOrNull() ?: continue
             val tail = text.substring(m.start(), (m.end() + 12).coerceAtMost(text.length))
-            val value = raw.toLongOrNull() ?: continue
-            return if (tail.contains("تومان") || tail.contains("تومن")) value * 10 else value
+            val normalized = if (tail.contains("تومان") || tail.contains("تومن"))
+                value.multiply(BigInteger.TEN) else value
+            if (normalized <= BigInteger.ZERO || normalized > BigInteger.valueOf(Long.MAX_VALUE)) continue
+            return normalized.toLong()
         }
         return null
     }
@@ -96,4 +115,10 @@ object SmsTransactionParser {
                 else -> c
             }
         }.joinToString("").lowercase(Locale("fa"))
+
+    private fun sha256(value: String): String {
+        val digest = MessageDigest.getInstance("SHA-256")
+            .digest(value.toByteArray(StandardCharsets.UTF_8))
+        return digest.joinToString("") { "%02x".format(it) }
+    }
 }
