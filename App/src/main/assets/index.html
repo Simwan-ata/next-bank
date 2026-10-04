@@ -329,7 +329,7 @@
         </div>
         <div style="text-align:center; flex:1;">
           <div class="header-title" id="headerTitle">داشبورد</div>
-          <div class="header-sub" id="headerSub">خلاصه وضعیت حساب · این ماه</div>
+          <div class="header-sub" id="headerSub">خلاصه تراکنش‌های ثبت‌شده · این ماه</div>
         </div>
         <div class="icon-btn">
           <svg viewBox="0 0 24 24" fill="none" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="M21 21l-4.3-4.3"/></svg>
@@ -338,7 +338,7 @@
 
       <div class="balance-row">
         <div class="balance-chip">
-          <div class="lbl">موجودی کل</div>
+          <div class="lbl">خالص گردش</div>
           <div class="val">۴۲٬۸۰۰٬۰۰۰ ریال</div>
         </div>
         <div class="balance-chip gold">
@@ -693,48 +693,109 @@
     let rows=[];
     try { rows=JSON.parse(AndroidFinance.getTransactions()||'[]'); } catch(e){ return; }
 
-    const income=rows.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount||0),0);
-    const expense=rows.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount||0),0);
-    const balance=income-expense;
-    const flagged=rows.filter(x=>Number(x.amount||0)>=5000000).length;
+    const now=new Date();
+    const monthRows=rows.filter(x=>{
+      const d=new Date(Number(x.timestamp||0));
+      return d.getFullYear()===now.getFullYear() && d.getMonth()===now.getMonth();
+    });
+    const income=monthRows.filter(x=>x.type==='income').reduce((s,x)=>s+Number(x.amount||0),0);
+    const expense=monthRows.filter(x=>x.type==='expense').reduce((s,x)=>s+Number(x.amount||0),0);
+    const net=income-expense;
+    const threshold=5000000;
+    const flagged=rows.filter(x=>Number(x.amount||0)>=threshold).length;
 
     const chips=document.querySelectorAll('.balance-chip .val');
-    if(chips[0]) chips[0].textContent=formatMoney(balance);
+    if(chips[0]) chips[0].textContent=formatMoney(net);
     if(chips[1]) chips[1].textContent=formatNumber(flagged)+' مورد';
 
     const summary=document.querySelectorAll('.summary-card .val');
     if(summary[0]) summary[0].textContent=(income/1000000).toLocaleString('fa-IR',{maximumFractionDigits:1})+' م';
     if(summary[1]) summary[1].textContent=(expense/1000000).toLocaleString('fa-IR',{maximumFractionDigits:1})+' م';
-    if(summary[2]) summary[2].textContent=formatMoney(balance);
+    if(summary[2]) summary[2].textContent=formatMoney(net);
+
+    const summarySubs=document.querySelectorAll('.summary-card .sub');
+    if(summarySubs[0]) summarySubs[0].textContent=monthRows.length+' تراکنش ثبت‌شده';
+    if(summarySubs[1]) summarySubs[1].textContent='فقط تراکنش‌های همین ماه';
+    if(summarySubs[2]) summarySubs[2].textContent='واریز منهای برداشت همین ماه';
 
     const recent=document.querySelector('#view-dashboard .tx-list');
     if(recent){
-      recent.innerHTML = rows.slice(0,5).map(t=>{
-        const sign=t.type==='income'?'+':'-';
-        const cls=t.type==='income'?'in':'';
-        const label=t.description || (t.type==='income'?'واریز وجه':'برداشت');
-        const bank=t.bank?(' · '+t.bank):'';
-        const date=new Date(Number(t.timestamp||0)).toLocaleDateString('fa-IR');
-        return '<div class="tx-row"><div class="tx-icon">'+(t.type==='income'?'واریز':'برداشت')+'</div>'+
-          '<div class="tx-body"><div class="tx-title">'+escapeHtml(label)+'</div>'+
-          '<div class="tx-sub">'+escapeHtml(bank.replace(' · ','') || 'منبع: پیامک')+' · '+date+'</div>'+
-          (t.confidence<70?'<div class="tx-flag-badge" style="background:#F3E9C7">نیازمند بررسی</div>':'')+
-          '</div><div class="tx-amount '+cls+'">'+formatNumber(t.amount)+sign+'</div></div>';
-      }).join('') || '<div class="tx-row"><div class="tx-body"><div class="tx-title">هنوز تراکنشی وارد نشده است</div><div class="tx-sub">از منوی «خواندن پیامک‌های بانکی» استفاده کنید.</div></div></div>';
+      recent.innerHTML=rows.slice(0,5).map(t=>transactionHtml(t,false)).join('') ||
+        '<div class="tx-row"><div class="tx-body"><div class="tx-title">هنوز تراکنشی وارد نشده است</div><div class="tx-sub">از منوی «خواندن پیامک‌های بانکی» استفاده کنید.</div></div></div>';
     }
 
     const flaggedView=document.querySelector('#view-flagged .tx-list');
     if(flaggedView){
-      const high=rows.filter(t=>Number(t.amount||0)>=5000000).slice(0,50);
-      flaggedView.innerHTML=high.map(t=>{
-        const sign=t.type==='income'?'+':'-';
-        return '<div class="tx-row flag"><div class="tx-icon">'+(t.type==='income'?'واریز':'برداشت')+'</div>'+
-          '<div class="tx-body"><div class="tx-title">'+escapeHtml(t.description||'تراکنش')+'</div>'+
-          '<div class="tx-sub">'+escapeHtml(t.bank||'بانک نامشخص')+' · '+new Date(Number(t.timestamp||0)).toLocaleDateString('fa-IR')+'</div>'+
-          '<span class="tx-flag-badge">بالای آستانه</span></div>'+
-          '<div class="tx-amount '+(t.type==='income'?'in':'')+'">'+formatNumber(t.amount)+sign+'</div></div>';
-      }).join('') || '<div class="tx-row"><div class="tx-body"><div class="tx-title">تراکنش بالای آستانه‌ای ثبت نشده است</div></div></div>';
+      const high=rows.filter(t=>Number(t.amount||0)>=threshold).slice(0,50);
+      flaggedView.innerHTML=high.map(t=>transactionHtml(t,true)).join('') ||
+        '<div class="tx-row"><div class="tx-body"><div class="tx-title">تراکنش بالای آستانه‌ای ثبت نشده است</div></div></div>';
     }
+
+    const cardsView=document.querySelector('#view-cards .section');
+    if(cardsView){
+      const banks={};
+      rows.forEach(t=>{
+        const key=t.bank||'بانک نامشخص';
+        if(!banks[key]) banks[key]={count:0,total:0,last4:t.cardLast4||''};
+        banks[key].count++;
+        banks[key].total+=t.type==='income'?Number(t.amount||0):-Number(t.amount||0);
+        if(!banks[key].last4 && t.cardLast4) banks[key].last4=t.cardLast4;
+      });
+      const items=Object.entries(banks).map(([bank,v])=>
+        '<div class="bank-card"><div class="bank-card-top"><div><div class="bank-name">'+escapeHtml(bank)+
+        '</div><div class="bank-owner">بر اساس تراکنش‌های واردشده</div></div><div class="bank-badge">محلی</div></div>'+
+        '<div class="bank-number">'+(v.last4?'•••• •••• •••• '+escapeHtml(v.last4):'شماره کارت ثبت نشده')+'</div>'+
+        '<div class="bank-card-bottom"><div><div class="bank-balance-lbl">خالص گردش</div><div class="bank-balance-val">'+formatMoney(v.total)+
+        '</div></div><div class="bank-tx-count">'+formatNumber(v.count)+' گردش</div></div></div>'
+      ).join('');
+      cardsView.innerHTML=items || '<div class="tx-row"><div class="tx-body"><div class="tx-title">هنوز حسابی از پیامک‌ها شناسایی نشده است</div></div></div>';
+    }
+
+    const merchantsView=document.querySelector('#view-merchants .merchant-list');
+    if(merchantsView){
+      const map={};
+      rows.filter(t=>t.type==='expense').forEach(t=>{
+        const name=t.description||'سایر برداشت‌ها';
+        if(!map[name]) map[name]={count:0,total:0};
+        map[name].count++;
+        map[name].total+=Number(t.amount||0);
+      });
+      const items=Object.entries(map).sort((a,b)=>b[1].total-a[1].total).slice(0,20);
+      merchantsView.innerHTML=items.map(([name,v])=>
+        '<div class="merchant-row"><div class="merchant-icon">↙</div><div class="merchant-row-body"><div class="name">'+
+        escapeHtml(name)+'</div><div class="meta">'+formatNumber(v.count)+' تراکنش</div></div><div class="merchant-row-total">'+
+        formatMoney(v.total)+'</div></div>'
+      ).join('') || '<div class="tx-row"><div class="tx-body"><div class="tx-title">پذیرنده‌ای ثبت نشده است</div></div></div>';
+    }
+
+    const chart=document.querySelector('.bars');
+    if(chart){
+      const monthly=[];
+      for(let i=5;i>=0;i--){
+        const d=new Date(now.getFullYear(),now.getMonth()-i,1);
+        const rr=rows.filter(t=>{const td=new Date(Number(t.timestamp||0));return td.getFullYear()===d.getFullYear()&&td.getMonth()===d.getMonth();});
+        monthly.push({label:d.toLocaleDateString('fa-IR',{month:'short'}),income:rr.filter(t=>t.type==='income').reduce((s,t)=>s+Number(t.amount||0),0),expense:rr.filter(t=>t.type==='expense').reduce((s,t)=>s+Number(t.amount||0),0)});
+      }
+      const max=Math.max(1,...monthly.flatMap(x=>[x.income,x.expense]));
+      chart.innerHTML=monthly.map(x=>'<div class="bar-group"><div class="bar-pair">'+
+        '<div class="bar income" style="height:'+Math.max(3,x.income/max*90)+'px"></div>'+
+        '<div class="bar expense" style="height:'+Math.max(3,x.expense/max*90)+'px"></div></div>'+
+        '<div class="bar-label">'+escapeHtml(x.label)+'</div></div>').join('');
+    }
+  }
+
+  function transactionHtml(t,flag){
+    const sign=t.type==='income'?'+':'-';
+    const cls=t.type==='income'?'in':'';
+    const label=t.description || (t.type==='income'?'واریز وجه':'برداشت');
+    const bank=t.bank?escapeHtml(t.bank):'بانک نامشخص';
+    const date=new Date(Number(t.timestamp||0)).toLocaleDateString('fa-IR');
+    return '<div class="tx-row '+(flag?'flag':'')+'"><div class="tx-icon">'+
+      (t.type==='income'?'واریز':'برداشت')+'</div><div class="tx-body"><div class="tx-title">'+escapeHtml(label)+
+      '</div><div class="tx-sub">'+bank+' · '+date+(t.cardLast4?' · ****'+escapeHtml(t.cardLast4):'')+
+      '</div>'+(t.confidence<70?'<div class="tx-flag-badge" style="background:#F3E9C7">نیازمند بررسی</div>':'')+
+      (flag?'<span class="tx-flag-badge">بالای آستانه</span>':'')+
+      '</div><div class="tx-amount '+cls+'">'+formatNumber(t.amount)+sign+'</div></div>';
   }
 
   function escapeHtml(value){
