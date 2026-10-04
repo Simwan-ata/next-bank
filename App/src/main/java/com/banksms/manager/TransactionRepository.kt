@@ -41,9 +41,9 @@ class TransactionRepository(context: Context) {
         var added = 0
         for (item in items) {
             if (item.amount <= 0L || item.timestamp <= 0L) continue
-            val stableId = item.id.ifBlank { continue }
-            if (ids.add(stableId)) {
-                existing += item.copy(id = stableId)
+            if (item.id.isBlank()) continue
+            if (ids.add(item.id)) {
+                existing += item
                 added++
             }
         }
